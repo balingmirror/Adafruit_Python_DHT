@@ -18,11 +18,33 @@
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-import sys
-
+# SOFTWARE
 import Adafruit_DHT
+import time
+import sys
+import httplib
+import urllib
+import json
 
+deviceId = "D14EKzeI"
+deviceKey = "PxNn0009U91qn1Hu"
+def post_to_mcs(payload):
+	headers = {"Content-type": "application/json", "deviceKey": deviceKey}
+	not_connected = 1
+	while (not_connected):
+		try:
+			httpClient = httplib.HTTPConnection("api.mediatek.com:80")
+			httpClient.connect()
+			not_connected = 0
+		except (httplib.client.HTTPException, socket.error) as ex:
+			print ("Error: %s" % ex)
+			time.sleep(10)
+			 # sleep 10 seconds
+	httpClient.request("POST", "/mcs/v2/devices/" + deviceId + "/datapoints", json.dumps(payload), headers)
+	response = httpClient.getresponse()
+	print( response.status, response.reason, json.dumps(payload), time.strftime("%c"))
+	data = response.read()
+	httpClient.close()
 
 # Parse command line parameters.
 sensor_args = { '11': Adafruit_DHT.DHT11,
@@ -38,7 +60,7 @@ else:
 
 # Try to grab a sensor reading.  Use the read_retry method which will retry up
 # to 15 times to get a sensor reading (waiting 2 seconds between each retry).
-humidity, temperature = Adafruit_DHT.read_retry(sensor, pin)
+Humidity, Temperature = Adafruit_DHT.read_retry(sensor, pin)
 
 # Un-comment the line below to convert the temperature to Fahrenheit.
 # temperature = temperature * 9/5.0 + 32
@@ -48,9 +70,13 @@ humidity, temperature = Adafruit_DHT.read_retry(sensor, pin)
 # guarantee the timing of calls to read the sensor).
 # If this happens try again!
 while True:
-	humidity,temperature = Adafruit_DHT.read_retry(sensor,pin)
-	if humidity is not None and temperature is not None:
-	    print('Temp={0:0.1f}*  Humidity={1:0.1f}%'.format(temperature, humidity))
+	Humidity,Temperature = Adafruit_DHT.read_retry(sensor,pin)
+	if Humidity is not None and Temperature is not None:
+	    print('Temp={0:0.1f}*  Humidity={1:0.1f}%'.format(Temperature, Humidity))
+	    payload = {"datapoints":[{"dataChnId":"Humidity","values":{"value":Humidity}}
+		      ,{"dataChnId":"Temperature","values":{"value":Temperature}}]}
+	    post_to_mcs(payload)
+	    time.sleep(10)
 	else:
 	    print('Failed to get reading. Try again!')
 	    sys.exit(1)
